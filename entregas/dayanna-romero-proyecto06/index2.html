@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkControl - Dashboard Profesional Lilac Edition</title>
+    <style>
+        :root {
+            /* NUEVA PALETA DE MORADOS Y LILAS ELEGANTES */
+            --sidebar-bg: linear-gradient(180deg, #2e1065 0%, #1e1b4b 100%);
+            --main-bg: #f5f3ff;
+            --card-bg: #ffffff;
+            --text-main: #1e1b4b;
+            --text-muted: #6b7280;
+            --primary: #7c3aed;
+            --primary-hover: #6d28d9;
+            --success: #2563eb;
+            --success-light: #dbeafe;
+            --success-text: #1d4ed8;
+            --danger: #db2777;
+            --danger-hover: #be185d;
+            --border-color: #ddd6fe;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+
+            /* ESTADOS DEL MAPA */
+            --slot-vacant-bg: #ede9fe;
+            --slot-vacant-border: #a78bfa;
+            --slot-vacant-text: #6d28d9;
+            --slot-occupied-bg: #4c1d95;
+            --slot-occupied-border: #6d28d9;
+            --slot-occupied-text: #f5f3ff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            display: flex;
+            background-color: var(--main-bg);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        /* BARRA LATERAL (Sidebar) */
+        .sidebar {
+            width: 280px;
+            background: var(--sidebar-bg);
+            color: #f5f3ff;
+            padding: 30px 24px;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 40px;
+            letter-spacing: -0.5px;
+        }
+
+        .brand-icon {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 20px;
+        }
+
+        .sidebar-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            color: #c084fc;
+            text-decoration: none;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-link:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar-link.active {
+            color: #fff;
+            background: rgba(124, 58, 237, 0.3);
+            border-left: 4px solid var(--primary);
+        }
+
+        /* CONTENEDOR PRINCIPAL */
+        .main-container {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .header {
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1e1b4b;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* TARJETAS DE INDICADORES */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .metric-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-info h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .metric-info .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1e1b4b;
+        }
+
+        .progress-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: conic-gradient(var(--primary) 65%, #ddd6fe 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .progress-circle::after {
+            content: "65%";
+            position: absolute;
+            width: 46px;
+            height: 46px;
+            background: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* DISEÑO DE COLUMNAS ACTUALIZADO */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.6fr;
+            gap: 32px;
+            align-items: start;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 1024px) {
+            .workspace-grid, .map-section-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 28px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .panel h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #1e1b4b;
+        }
+
+        /* FORMULARIOS ESTILIZADOS */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4338ca;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 15px;
+            color: var(--text-main);
+            background-color: #fbfbfe;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            background-color: #fff;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+        }
+
+        /* BOTONES */
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-out {
+            background-color: var(--danger);
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s ease;
+        }
+
+        .btn-out:hover {
+            background-color: var(--danger-hover);
+        }
+
+        /* TABLAS ELEGANTES */
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            padding: 14px 16px;
+            background-color: #f3e8ff;
+            color: #6b21a8;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            color: #312e81;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: #faf5ff;
+        }
+
+        .plate-number {
+            font-family: monospace;
+            font-size: 15px;
+            font-weight: 700;
+            color: #1e1b4b;
+            background: #f3e8ff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #d8b4fe;
+        }
+
+        /* BADGES */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-occasional {
+            background-color: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .badge-monthly {
+            background-color: #fef3c7;
+            color: #b45309;
+        }
+
+        /* --- NUEVA SECCIÓN DEL MAPA DE ESPACIOS (ESTILO CARSPOT) --- */
+        .map-section-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 32px;
+            margin-top: 32px;
+            align-items: start;
+        }
+
+        .map-header-tools {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .map-legend {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .parking-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+            gap: 10px;
+        }
+
+        .slot {
+            height: 48px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            user-select: none;
+        }
+
+        .slot.vacant {
+            background: var(--slot-vacant-bg);
+            border: 1.5px solid var(--slot-vacant-border);
+            color: var(--slot-vacant-text);
+        }
+
+        .slot.vacant:hover {
+            filter: brightness(0.95);
+            transform: translateY(-2px);
+        }
+
+        .slot.occupied {
+            background: var(--slot-occupied-bg);
+            border: 1.5px solid var(--slot-occupied-border);
+            color: var(--slot-occupied-text);
+        }
+
+        .slot.occupied:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+
+        /* DETALLES DEL SLOT SELECCIONADO */
+        .slot-detail-card {
+            background: #faf5ff;
+            border: 1.5px dashed var(--border-color);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 14px;
+            border-bottom: 1px solid #f3e8ff;
+            padding-bottom: 8px;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .detail-row span:first-child {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .detail-row span:last-child {
+            font-weight: 600;
+            color: #1e1b4b;
+        }
+
+        /* FOOTER DE PERSISTENCIA */
+        .footer-status {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .db-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #1e1b4b;
+            font-weight: 600;
+        }
+
+        .db-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--primary);
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="brand">
+            <span class="brand-icon">🚗</span>
+            <span>ParkControl</span>
+        </div>
+        <div class="sidebar-menu">
+            <a href="#" class="sidebar-link active">📍 Panel Principal</a>
+            <a href="#" class="sidebar-link">🔄 Ingresos / Salidas</a>
+            <a href="#" class="sidebar-link">👥 Clientes Mensuales</a>
+            <a href="#" class="sidebar-link">📋 Espacios Disponibles</a>
+            <a href="#" class="sidebar-link">📈 Reporte de Ingresos</a>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="header">
+            <h1>Dashboard del Parqueadero</h1>
+            <p>Monitoreo de ocupación, gestión de cobros y control de registros en tiempo real.</p>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-info">
+                    <h3>Espacios Disponibles</h3>
+                    <div class="value">65 / 100</div>
+                </div>
+                <div class="progress-circle"></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-info">
+                    <h3>Vehículos Activos</h3>
+                    <div class="value">35</div>
+                </div>
+                <div style="font-size: 32px; color: #b45309;">🚘</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-info">
+                    <h3>Mensualidades Activas</h3>
+                    <div class="value">12</div>
+                </div>
+                <div style="font-size: 32px; color: #6b21a8;">📆</div>
+            </div>
+        </div>
+
+        <div class="workspace-grid">
+            
+            <div class="panel">
+                <h2>Registrar Entrada</h2>
+                <form>
+                    <div class="form-group">
+                        <label for="placa">Placa del Vehículo</label>
+                        <input type="text" id="placa" class="form-control" placeholder="Ej. ABC123" required style="text-transform: uppercase;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tipo">Tipo de Vehículo</label>
+                        <select id="tipo" class="form-control" required>
+                            <option value="">Seleccione el tipo...</option>
+                            <option value="carro">Carro</option>
+                            <option value="moto">Moto</option>
+                            <option value="bici">Bicicleta</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo_cliente">Tipo de Régimen</label>
+                        <select id="tipo_cliente" class="form-control" required>
+                            <option value="ocasional">Ocasional (Por Hora)</option>
+                            <option value="mensual">Mensualidad (Cupo Fijo)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-submit">⚡ Ingresar Vehículo</button>
+                </form>
+            </div>
+
+            <div class="panel">
+                <h2>Vehículos Dentro del Parqueadero</h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Placa</th>
+                                <th>Tipo</th>
+                                <th>Hora Ingreso</th>
+                                <th>Régimen</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="plate-number">ABXG40</span></td>
+                                <td>Carro</td>
+                                <td>22/05/2026 18:30</td>
+                                <td><span class="badge badge-occasional">Ocasional</span></td>
+                                <td>
+                                    <button class="btn-out">👉 Dar Salida</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><span class="plate-number">AASWR9</span></td>
+                                <td>Carro</td>
+                                <td>22/05/2026 19:15</td>
+                                <td><span class="badge badge-monthly">Mensual</span></td>
+                                <td>
+                                    <button class="btn-out">👉 Dar Salida</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><span class="plate-number">BXXOD1</span></td>
+                                <td>Moto</td>
+                                <td>22/05/2026 19:40</td>
+                                <td><span class="badge badge-monthly">Mensual</span></td>
+                                <td>
+                                    <button class="btn-out">👉 Dar Salida</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="map-section-grid">
+            <div class="panel">
+                <div class="map-header-tools">
+                    <h2>Distribución Física de Celdas (Mapa en Vivo)</h2>
+                    <div class="map-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: var(--slot-vacant-bg); border: 1px solid var(--slot-vacant-border)"></div>
+                            <span>Disponible</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: var(--slot-occupied-bg); border: 1px solid var(--slot-occupied-border)"></div>
+                            <span>Ocupado</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="parking-grid">
+                    <div class="slot occupied" onclick="mostrarInfoSlot('E-01', 'ABXG40', 'Carro', '18:30', 'Ocasional')">E-01</div>
+                    <div class="slot occupied" onclick="mostrarInfoSlot('E-02', 'AASWR9', 'Carro', '19:15', 'Mensual')">E-02</div>
+                    <div class="slot vacant" onclick="mostrarInfoSlot('E-03', 'Ninguno', '-', '-', '-')">E-03</div>
+                    <div class="slot vacant" onclick="mostrarInfoSlot('E-04', 'Ninguno', '-', '-', '-')">E-04</div>
+                    <div class="slot occupied" onclick="mostrarInfoSlot('E-05', 'BXXOD1', 'Moto', '19:40', 'Mensual')">E-05</div>
+                    <div class="slot vacant" onclick="mostrarInfoSlot('E-06', 'Ninguno', '-', '-', '-')">E-06</div>
+                    <div class="slot vacant" onclick="mostrarInfoSlot('E-07', 'Ninguno', '-', '-', '-')">E-07</div>
+                    <div class="slot vacant" onclick="mostrarInfoSlot('E-08', 'Ninguno', '-', '-', '-')">E-08</div>
+                    <div class="slot vacant" onclick="mostrarInfoSlot('E-09', 'Ninguno', '-', '-', '-')">E-09</div>
+                    <div class="slot vacant" onclick="mostrarInfoSlot('E-10', 'Ninguno', '-', '-', '-')">E-10</div>
+                    <div class="slot vacant" onclick="mostrarInfoSlot('E-11', 'Ninguno', '-', '-', '-')">E-11</div>
+                    <div class="slot vacant" onclick="mostrarInfoSlot('E-12', 'Ninguno', '-', '-', '-')">E-12</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Detalle del Slot: <span id="lbl-slot-id" style="color: var(--primary);">E-01</span></h2>
+                <div class="slot-detail-card">
+                    <div class="detail-row">
+                        <span>Vehículo:</span>
+                        <span id="lbl-slot-placa" class="plate-number" style="font-size: 13px;">ABXG40</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Tipo:</span>
+                        <span id="lbl-slot-tipo">Carro</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Ingreso:</span>
+                        <span id="lbl-slot-hora">18:30</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Régimen:</span>
+                        <span id="lbl-slot-regimen">Ocasional</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-status">
+            <span>Con persistencia en BD Relacional</span>
+            <div class="db-badge">
+                <div class="db-dot"></div>
+                <span>Base de Datos Conectada: MySQL</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function mostrarInfoSlot(slot, placa, tipo, hora, regimen) {
+            document.getElementById('lbl-slot-id').innerText = slot;
+            document.getElementById('lbl-slot-placa').innerText = placa;
+            document.getElementById('lbl-slot-tipo').innerText = tipo;
+            document.getElementById('lbl-slot-hora').innerText = hora;
+            document.getElementById('lbl-slot-regimen').innerText = regimen;
+        }
+    </script>
+</body>
+</html>
