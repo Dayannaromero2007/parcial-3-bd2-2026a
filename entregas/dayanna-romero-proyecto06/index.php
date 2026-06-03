@@ -49,6 +49,8 @@ try {
     $stmt_historial = $conexion->query($sql_historial);
     $lista_historial = $stmt_historial->fetchAll(PDO::FETCH_ASSOC);
 
+    
+
 } catch(PDOException $e) {
     // Si algo falla, el catch lo atrapa aquí abajo
     echo "Error: " . $e->getMessage();
@@ -511,7 +513,7 @@ try {
         </div>
 
     </div>
-    </div>
+   
 <!-- MAPA DE ESPACIOS -->
 <div id="page-espacios" class="page">
 
@@ -972,12 +974,6 @@ try {
                 <option>Diciembre</option>
             </select>
 
-            <input
-                type="number"
-                value="2026"
-                class="form-control reporte-input"
-            >
-
             <button class="btn-reporte">
                 Reporte Mes
             </button>
@@ -985,7 +981,7 @@ try {
             <!-- POR AÑO -->
             <input
                 type="number"
-                placeholder="Año"
+                value="2026"
                 class="form-control reporte-input"
             >
 
