@@ -30,19 +30,33 @@ try {
     $tarifas = [];
     while ($row = $stmt_tarifas->fetch(PDO::FETCH_ASSOC)) {
         $tarifas[$row['Tipo_vehiculo_idTipo_vehiculo']] = $row;
-    }
+    } // <--- AQUÍ FALTABA ESTA LLAVE DE CIERRE
 
-    // --- NUEVA CONSULTA: Cargar Clientes Mensuales ---
-    $sql_mensuales = "SELECT nombre, telefono, correo, fecha_inicio, fecha_final FROM clientes_mensuales";
+    // 4. CONSULTA ACTUALIZADA: Con JOIN para unir Cliente, Vehículo y Tipo
+    $sql_mensuales = "SELECT c.nombre, c.telefono, c.correo, c.fecha_inicio, c.fecha_final, v.placa, t.nombre_tipo
+                      FROM clientes_mensuales c
+                      LEFT JOIN vehiculo v ON c.idClientes_mensuales = v.idClientes_mensuales
+                      LEFT JOIN tipo_vehiculo t ON v.Tipo_vehiculo_idTipo_vehiculo = t.idTipo_vehiculo";
     $stmt_mensuales = $conexion->query($sql_mensuales);
     $lista_mensuales = $stmt_mensuales->fetchAll(PDO::FETCH_ASSOC);
 
+    // 5. CONSULTA HISTORIAL DE INGRESOS Y SALIDAS (Usando LEFT JOIN)
+    $sql_historial = "SELECT v.placa, t.nombre_tipo, i.fecha_hora_ingreso, i.fecha_hora_salida, i.tipo_cliente as regimen, i.Total_pago
+                      FROM ingresos i
+                      LEFT JOIN vehiculo v ON i.Vehiculo_idVehiculo = v.idVehiculo
+                      LEFT JOIN tipo_vehiculo t ON v.Tipo_vehiculo_idTipo_vehiculo = t.idTipo_vehiculo
+                      ORDER BY i.fecha_hora_ingreso DESC";
+    $stmt_historial = $conexion->query($sql_historial);
+    $lista_historial = $stmt_historial->fetchAll(PDO::FETCH_ASSOC);
+
 } catch(PDOException $e) {
+    // Si algo falla, el catch lo atrapa aquí abajo
     echo "Error: " . $e->getMessage();
     $vehiculos = [];
     $detalles_ocupados = [];
     $tarifas = [];
-    $lista_mensuales = []; // Inicializamos en caso de error
+    $lista_mensuales = []; 
+    $lista_historial = [];
 }
 ?>
 <!DOCTYPE html>
@@ -381,14 +395,13 @@ try {
 
                         <tbody id="tabla-mensuales">
 <?php 
-  // Verificamos si la variable $lista_mensuales tiene datos
   if (!empty($lista_mensuales)): 
     foreach ($lista_mensuales as $c): 
 ?>
     <tr>
         <td><?php echo htmlspecialchars($c['nombre']); ?></td>
-        <td>—</td> 
-        <td>—</td> 
+        <td><?php echo htmlspecialchars($c['placa'] ?? 'Sin placa'); ?></td>
+        <td><?php echo htmlspecialchars($c['nombre_tipo'] ?? 'N/A'); ?></td>
         <td><?php echo htmlspecialchars($c['telefono']); ?></td>
         <td><?php echo htmlspecialchars($c['correo']); ?></td>
         <td><?php echo htmlspecialchars($c['fecha_inicio']); ?></td>
@@ -424,7 +437,7 @@ try {
 
         <div class="panel">
 
-            <h2 class="registar">Registrar Entrada</h2>
+            <h2 class="registar">Historial de Movimientos</h2>
 
             <div class="table-responsive">
 
@@ -443,14 +456,51 @@ try {
                     </thead>
 
                     <tbody id="tabla-ingresos">
+                    <?php 
+                      // Verificamos si la consulta trajo datos
+                      if (!empty($lista_historial)): 
+                        foreach ($lista_historial as $h): 
+                            
+                            // Valores por defecto si el vehículo aún no sale
+                            $duracion = "En parqueadero";
+                            $costo = "Pendiente";
+                            $salida = "---";
+
+                            // Si ya tiene hora de salida, hacemos la matemática
+                            if (!empty($h['fecha_hora_salida'])) {
+                                $salida = $h['fecha_hora_salida'];
+                                
+                                $fecha1 = new DateTime($h['fecha_hora_ingreso']);
+                                $fecha2 = new DateTime($h['fecha_hora_salida']);
+                                $intervalo = $fecha1->diff($fecha2);
+                                $duracion = $intervalo->format('%Hh %Im'); // Ej: 02h 15m
+                                
+                                $total_pago = $h['Total_pago'] ?? 0;
+                                $costo = "$" . number_format($total_pago, 0, ',', '.');
+                            }
+                    ?>
                         <tr>
-                            <td colspan="7">
+                            <td><?php echo htmlspecialchars($h['placa']); ?></td>
+                            <td><?php echo htmlspecialchars($h['nombre_tipo'] ?? 'N/A'); ?></td>
+                            <td><?php echo htmlspecialchars($h['fecha_hora_ingreso']); ?></td>
+                            <td><?php echo htmlspecialchars($salida); ?></td>
+                            <td><?php echo $duracion; ?></td>
+                            <td><?php echo htmlspecialchars($h['regimen'] ?? 'Ocasional'); ?></td>
+                            <td style="font-weight: bold; color: #4caf50;"><?php echo $costo; ?></td>
+                        </tr>
+                    <?php 
+                        endforeach; 
+                      // Si la base de datos está vacía, mostramos el mensaje original
+                      else: 
+                    ?>
+                        <tr>
+                            <td colspan="7" style="text-align: center;">
                                 No hay ingresos registrados
                             </td>
                         </tr>
+                    <?php endif; ?>
                     </tbody>
-
-                </table>
+                    </table>
 
                 <button class="btn-submit" >
                     🚪 Registrar Salida
@@ -460,6 +510,7 @@ try {
 
         </div>
 
+    </div>
     </div>
 <!-- MAPA DE ESPACIOS -->
 <div id="page-espacios" class="page">
