@@ -3,7 +3,7 @@ require_once 'conexion.php';
 
 try {
     // 1. CONSULTA PARA VEHÍCULOS
-    $sql = "SELECT v.placa, v.marca, v.color, t.nombre_tipo as tipo_vehiculo, i.fecha_hora_ingreso, i.Espacio_idEspacio
+    $sql = "SELECT v.placa, v.marca, v.color, t.nombre_tipo as tipo_vehiculo, i.fecha_hora_ingreso, i.Espacio_idEspacio, i.tipo_cliente as regimen
             FROM vehiculo v
             JOIN tipo_vehiculo t ON v.Tipo_vehiculo_idTipo_vehiculo = t.idTipo_vehiculo
             JOIN ingresos i ON v.idVehiculo = i.Vehiculo_idVehiculo
@@ -49,7 +49,54 @@ try {
     $stmt_historial = $conexion->query($sql_historial);
     $lista_historial = $stmt_historial->fetchAll(PDO::FETCH_ASSOC);
 
+    // --- NUEVO: CÁLCULOS PARA LAS TARJETAS DEL DASHBOARD ---
+    $espacios_totales = 100;
+    $espacios_ocupados = count($detalles_ocupados);
+    $espacios_disponibles = $espacios_totales - $espacios_ocupados;
     
+    $vehiculos_activos = count($vehiculos);
+    $mensualidades_activas = count($lista_mensuales);
+    
+    $fecha_hoy = date('Y-m-d');
+    $sql_hoy = "SELECT SUM(Total_pago) as suma_hoy FROM ingresos WHERE DATE(fecha_hora_salida) = '$fecha_hoy'";
+    $resultado_hoy = $conexion->query($sql_hoy)->fetch(PDO::FETCH_ASSOC);
+    $ingresos_hoy = $resultado_hoy['suma_hoy'] ?? 0;
+
+    // --- 6. LÓGICA EXCLUSIVA PARA LA PESTAÑA DE REPORTES ---
+    $where_reporte = " WHERE i.fecha_hora_salida IS NOT NULL"; 
+
+    // Verificamos si se presionó algún botón
+    if (isset($_GET['accion'])) {
+        
+        if ($_GET['accion'] == 'dia' && !empty($_GET['dia'])) {
+            $where_reporte .= " AND DATE(i.fecha_hora_ingreso) = '{$_GET['dia']}'";
+        }
+        if ($_GET['accion'] == 'semana' && !empty($_GET['semana'])) {
+            $where_reporte .= " AND YEARWEEK(i.fecha_hora_ingreso, 1) = YEARWEEK('{$_GET['semana']}', 1)";
+        }
+        if ($_GET['accion'] == 'mes' && !empty($_GET['mes'])) {
+            $where_reporte .= " AND MONTH(i.fecha_hora_ingreso) = '{$_GET['mes']}'";
+        }
+        if ($_GET['accion'] == 'ano' && !empty($_GET['ano'])) {
+            $where_reporte .= " AND YEAR(i.fecha_hora_ingreso) = '{$_GET['ano']}'";
+        }
+        
+        // CORRECCIÓN AQUÍ: El régimen se aplica sin importar qué botón oprimas
+        if (isset($_GET['regimen']) && !empty($_GET['regimen']) && strtolower($_GET['regimen']) != 'todos') {
+            $where_reporte .= " AND i.tipo_cliente = '{$_GET['regimen']}'";
+        }
+    }
+    // A. Calcular el dinero total y los vehículos atendidos según el filtro
+    $sql_totales = "SELECT SUM(Total_pago) as suma_total, COUNT(idIngresos) as total_vehiculos FROM ingresos i" . $where_reporte;
+    $totales_reporte = $conexion->query($sql_totales)->fetch(PDO::FETCH_ASSOC);
+
+    // B. Obtener la lista filtrada para la tabla de abajo
+    $sql_reportes = "SELECT v.placa, t.nombre_tipo, i.fecha_hora_ingreso, i.fecha_hora_salida, i.tipo_cliente as regimen, i.Total_pago
+                     FROM ingresos i
+                     LEFT JOIN vehiculo v ON i.Vehiculo_idVehiculo = v.idVehiculo
+                     LEFT JOIN tipo_vehiculo t ON v.Tipo_vehiculo_idTipo_vehiculo = t.idTipo_vehiculo" 
+                     . $where_reporte . " ORDER BY i.fecha_hora_salida DESC";
+    $lista_reportes = $conexion->query($sql_reportes)->fetchAll(PDO::FETCH_ASSOC);
 
 } catch(PDOException $e) {
     // Si algo falla, el catch lo atrapa aquí abajo
@@ -126,7 +173,7 @@ try {
             <div class="metric-card">
                 <div class="metric-info">
                     <h3>Espacios Disponibles</h3>
-                    <div class="value" id="m-disponibles">—</div>
+                    <div class="value" id="m-disponibles"><?php echo $espacios_disponibles; ?></div>
                 </div>
                 <span class="metric-icon">🟢</span>
             </div>
@@ -134,7 +181,7 @@ try {
             <div class="metric-card">
                 <div class="metric-info">
                     <h3>Vehículos Activos</h3>
-                    <div class="value" id="m-activos">—</div>
+                    <div class="value" id="m-activos"><?php echo $vehiculos_activos; ?></div>
                 </div>
                 <span class="metric-icon">🚘</span>
             </div>
@@ -142,7 +189,7 @@ try {
             <div class="metric-card">
                 <div class="metric-info">
                     <h3>Mensualidades Activas</h3>
-                    <div class="value" id="m-mensuales">—</div>
+                    <div class="value" id="m-mensuales"><?php echo $mensualidades_activas; ?></div>
                 </div>
                 <span class="metric-icon">📆</span>
             </div>
@@ -150,7 +197,7 @@ try {
             <div class="metric-card">
                 <div class="metric-info">
                     <h3>Ingresos Hoy</h3>
-                    <div class="value" id="m-ingresos-hoy">—</div>
+                    <div class="value" id="m-ingresos-hoy">$ <?php echo number_format($ingresos_hoy, 0, ',', '.'); ?></div>
                 </div>
                 <span class="metric-icon">💰</span>
             </div>
@@ -190,7 +237,7 @@ try {
                 </select>
             </div>
 
-            <div class="from-group">
+            <div class="form-group">
                <label>Marca</label>
                <input type="text" name="marca" class="form-control" placeholder="Marca del vehículo">
             </div>
@@ -241,7 +288,7 @@ try {
       <td><?php echo htmlspecialchars($v['placa']); ?></td>
       <td><?php echo htmlspecialchars($v['tipo_vehiculo']); ?></td>
       <td><?php echo htmlspecialchars($v['fecha_hora_ingreso']); ?></td>
-      <td>Ocasional</td>
+      <td><?php echo htmlspecialchars($v['regimen']); ?></td>
       <td>
           <form action="procesar_salida.php" method="POST" style="margin:0;">
               <input type="hidden" name="placa" value="<?php echo htmlspecialchars($v['placa']); ?>">
@@ -371,7 +418,7 @@ try {
                 <button class="btn-submit">
                     💳 Registrar Mensualidad
                 </button>
-
+                </form>
             </div>
 
             <!-- TABLA -->
@@ -752,7 +799,7 @@ try {
                 <button type="submit" class="btn-submit">
                     Guardar Tarifa
                 </button>
-
+                </form>
             </div>
             <div class="tarifa-item">
     
@@ -795,6 +842,7 @@ try {
                 <button type="submit" class="btn-submit">
                     Guardar Tarifa
                 </button>
+                </form>    
             </div>
             <div class="tarifa-item">
                 <h4>🏍 Moto</h4>
@@ -837,7 +885,7 @@ try {
                 <button type="submit" class="btn-submit">
                     Guardar Tarifa
                 </button>
-
+                </form>
             </div>
         
             <div class="tarifa-item">
@@ -881,7 +929,7 @@ try {
                 <button type="submit" class="btn-submit">
                     Guardar Tarifa
                 </button>
-
+                </form>
             </div>
 
             <div class="tarifa-item">
@@ -925,6 +973,7 @@ try {
                 <button type="submit" class="btn-submit">
                  Guardar Tarifa  
                 </button>
+                </form>
             </div>
         </div>
     </div>
@@ -941,79 +990,83 @@ try {
     <div class="panel reporte-panel">
 
         <h2>Filtros de Reporte</h2>
-
+        <form method="GET" action="index.php" class="reporte-filtros" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
         <div class="reporte-filtros">
 
             <!-- POR DIA -->
-            <input type="date" class="form-control reporte-input">
+            <input type="date" name="dia" value="<?php echo isset($_GET['dia']) ? htmlspecialchars($_GET['dia']) : ''; ?>" class="form-control reporte-input">
 
-            <button class="btn-reporte">
+            <button type="submit" name="accion" value="dia" class="btn-reporte">
                 Reporte Día
             </button>
 
             <!-- POR SEMANA -->
-            <input type="week" class="form-control reporte-input">
+            <input type="week" name="semana" value="<?php echo isset($_GET['semana']) ? htmlspecialchars($_GET['semana']) : ''; ?>" class="form-control reporte-input">
 
-            <button class="btn-reporte">
+            <button type="submit" name="accion" value="semana" class="btn-reporte">
                 Reporte Semana
             </button>
 
             <!-- POR MES -->
-            <select class="form-control reporte-input">
-                <option>Enero</option>
-                <option>Febrero</option>
-                <option>Marzo</option>
-                <option>Abril</option>
-                <option>Mayo</option>
-                <option>Junio</option>
-                <option>Julio</option>
-                <option>Agosto</option>
-                <option>Septiembre</option>
-                <option>Octubre</option>
-                <option>Noviembre</option>
-                <option>Diciembre</option>
+            <select name="mes" class="form-control reporte-input">
+                <option value="1"<?php if(isset($_GET['mes']) && $_GET['mes'] == '1') echo 'selected'; ?>>Enero</option>
+                <option value="2"<?php if(isset($_GET['mes']) && $_GET['mes'] == '2') echo 'selected'; ?>>Febrero</option>
+                <option value="3"<?php if(isset($_GET['mes']) && $_GET['mes'] == '3') echo 'selected'; ?>>Marzo</option>
+                <option value="4"<?php if(isset($_GET['mes']) && $_GET['mes'] == '4') echo 'selected'; ?>>Abril</option>
+                <option value="5"<?php if(isset($_GET['mes']) && $_GET['mes'] == '5') echo 'selected'; ?>>Mayo</option>
+                <option value="6"<?php if(isset($_GET['mes']) && $_GET['mes'] == '6') echo 'selected'; ?>>Junio</option>
+                <option value="7"<?php if(isset($_GET['mes']) && $_GET['mes'] == '7') echo 'selected'; ?>>Julio</option>
+                <option value="8"<?php if(isset($_GET['mes']) && $_GET['mes'] == '8') echo 'selected'; ?>>Agosto</option>
+                <option value="9"<?php if(isset($_GET['mes']) && $_GET['mes'] == '9') echo 'selected'; ?>>Septiembre</option>
+                <option value="10"<?php if(isset($_GET['mes']) && $_GET['mes'] == '10') echo 'selected'; ?>>Octubre</option>
+                <option value="11"<?php if(isset($_GET['mes']) && $_GET['mes'] == '11') echo 'selected'; ?>>Noviembre</option>
+                <option value="12"<?php if(isset($_GET['mes']) && $_GET['mes'] == '12') echo 'selected'; ?>>Diciembre</option>
             </select>
 
-            <button class="btn-reporte">
+            <button type="submit" name="accion" value="mes" class="btn-reporte">
                 Reporte Mes
             </button>
 
             <!-- POR AÑO -->
             <input
                 type="number"
+                name="ano"
                 value="2026"
                 class="form-control reporte-input"
             >
 
-            <button class="btn-reporte">
+            <button type="submit" name="accion" value="ano" class="btn-reporte">
                 Reporte Año
             </button>
 
             <!-- POR REGIMEN -->
-            <select class="form-control reporte-input">
-                <option>Todos</option>
-                <option>Ocasional</option>
-                <option>Mensual</option>
+            <select name="regimen" class="form-control reporte-input">
+                <option value="todos">Todos</option>
+                <option value="Ocasional"<?php if(isset($_GET['regimen']) && $_GET['regimen']=='Ocasional') echo 'selected'; ?>>Ocasional</option>
+                <option value="Mensual" <?php if(isset($_GET['regimen']) && $_GET['regimen']=='Mensual') echo 'selected'; ?>>Mensual</option>
             </select>
 
-            <button class="btn-reporte">
+            <button type="submit" name="accion" value="regimen" class="btn-reporte">
                 Filtrar Régimen
             </button>
 
+            <button type="button" class="btn-reporte" style="background: #ee5d50;" onclick="window.location.href='index.php?accion=todos'">
+                Limpiar Filtros
+            </button>
         </div>
-
+      </form>
     </div>
 
     <!-- TARJETAS -->
     <div class="reporte-resumen">
 
         <div class="reporte-card">
-            <div class="rc-value">$ 0</div>
+            <div class="rc-value">$ <?php echo number_format($totales_reporte['suma_total'] ?? 0, 0, ',', '.'); ?></div>
             <div class="rc-label">Ingresos Totales</div>
         </div>
 
         <div class="reporte-card">
-            <div class="rc-value">0</div>
+            <div class="rc-value"><?php echo $totales_reporte['total_vehiculos'] ?? 0; ?></div>
             <div class="rc-label">Vehículos Atendidos</div>
         </div>
 
@@ -1041,13 +1094,34 @@ try {
                 </thead>
 
                 <tbody>
-
+                <?php 
+                  if (!empty($lista_reportes)): 
+                    foreach ($lista_reportes as $r): 
+                        // Calcular tiempo exacto
+                        $fecha1 = new DateTime($r['fecha_hora_ingreso']);
+                        $fecha2 = new DateTime($r['fecha_hora_salida']);
+                        $intervalo = $fecha1->diff($fecha2);
+                        $duracion = $intervalo->format('%Hh %Im');
+                ?>
                     <tr>
-                        <td colspan="7">
-                            Sin registros disponibles
+                        <td><?php echo htmlspecialchars($r['placa']); ?></td>
+                        <td><?php echo htmlspecialchars($r['nombre_tipo'] ?? 'N/A'); ?></td>
+                        <td><?php echo htmlspecialchars($r['fecha_hora_ingreso']); ?></td>
+                        <td><?php echo htmlspecialchars($r['fecha_hora_salida']); ?></td>
+                        <td><?php echo $duracion; ?></td>
+                        <td><?php echo htmlspecialchars($r['regimen']); ?></td>
+                        <td style="font-weight: bold; color: #4caf50;">$<?php echo number_format($r['Total_pago'], 0, ',', '.'); ?></td>
+                    </tr>
+                <?php 
+                    endforeach; 
+                  else: 
+                ?>
+                    <tr>
+                        <td colspan="7" style="text-align: center; ">
+                            Sin registros disponibles para esta busqueda
                         </td>
                     </tr>
-
+                <?php endif; ?>
                 </tbody>
 
             </table>
@@ -1062,6 +1136,29 @@ try {
 </script>
 <!-- JS -->
 <script src="./app.js?v=1"></script>
+<script>
+    // 1. Al cargar la página, revisamos cuál fue la última pestaña que visitaste
+    document.addEventListener("DOMContentLoaded", function() {
+        let pestanaGuardada = localStorage.getItem('pestanaActiva');
+        if (pestanaGuardada) {
+            // Le damos un pequeño tiempo para que app.js cargue primero
+            setTimeout(function() {
+                showPage(pestanaGuardada); 
+            }, 50);
+        }
+    });
 
+    // 2. Cuando hagas clic en cualquier botón del menú izquierdo, lo guardamos en la memoria
+    const enlacesMenu = document.querySelectorAll('.sidebar-link');
+    enlacesMenu.forEach(function(enlace) {
+        enlace.addEventListener('click', function() {
+            let onclickTexto = this.getAttribute('onclick');
+            if (onclickTexto) {
+                let nombrePagina = onclickTexto.split("'")[1]; 
+                localStorage.setItem('pestanaActiva', nombrePagina); // Lo guardamos en el navegador
+            }
+        });
+    });
+</script>
 </body>
 </html>

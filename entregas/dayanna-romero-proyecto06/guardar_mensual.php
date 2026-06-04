@@ -7,8 +7,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $tipo_id   = $_POST['tipo_vehiculo'] ?? '';
     $telefono  = $_POST['telefono'] ?? '';
     $correo    = $_POST['correo'] ?? '';
-    $inicio    = $_POST['fecha_inicio'] ?? date('Y-m-d');
-    $fin       = $_POST['fecha_fin'] ?? date('Y-m-d');
+    $inicio = !empty($_POST['fecha_inicio']) ? $_POST['fecha_inicio'] : date('Y-m-d');
+    $fin    = !empty($_POST['fecha_fin']) ? $_POST['fecha_fin'] : date('Y-m-d');
 
     try {
         // Iniciamos una transacción: o se guarda todo (cliente + vehículo), o no se guarda nada.
