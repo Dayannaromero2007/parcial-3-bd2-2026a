@@ -142,6 +142,10 @@ try {
             👥 Clientes Mensuales
         </button>
 
+        <button class="sidebar-link" onclick="showPage('facturas', event)">
+            🧾 Facturas
+        </button>
+
         <button class="sidebar-link" onclick="showPage('espacios', event)">
             📋 Mapa de Espacios
         </button>
@@ -153,7 +157,7 @@ try {
         <button class="sidebar-link" onclick="showPage('reportes', event)">
             📈 Reporte de Ingresos
         </button>
-
+            
     </div>
 </div>
 
@@ -248,7 +252,7 @@ try {
             </div>
             <div class="form-group">
                <label>Espacio Asignado</label>
-               <input type="text" name="espacio_asignado" id="input-espacio" class="form-control" placeholder="Haz clic en un espacio del mapa..." readonly>
+               <input type="text" name="espacio_asignado" id="input-espacio" class="form-control" placeholder="Haz clic en un espacio del mapa..." readonly onclick="irAlMapa('dashboard')" style="cursor: pointer;">
             </div>
 
             <button type="submit" class="btn-submit">⚡ Ingresar Vehículo</button>
@@ -396,6 +400,19 @@ try {
                 </div>
 
                 <div class="form-group">
+                    <label>Espacio Asignado</label>
+
+                    <input 
+                       type="text" 
+                       name="espacio_asignado" 
+                       id="input-espacio-mensual" 
+                       class="form-control" 
+                       placeholder="Haz clic para ir al mapa..."
+                       readonly onclick="irAlMapa('mensuales')" 
+                       style="cursor: pointer;">
+                </div>
+
+                <div class="form-group">
                     <label>Fecha de Inicio</label>
 
                     <input
@@ -475,7 +492,76 @@ try {
         </div>
 
     </div>
+    <!-- FACTURAS -->
+        <div id="page-facturas" class="page">
+        <div class="header">
+            <h1>Facturas Generadas</h1>
+            <p>Historial de facturación</p>
+        </div>
 
+        <div class="panel">
+            <h2 class="registar">Listado de Facturas</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>N° RECIBO</th>
+                            <th>PLACA</th>
+                            <th>TIPO</th>
+                            <th>HORA INGRESO</th>
+                            <th>HORA SALIDA</th>
+                            <th>DURACION</th>
+                            <th>REGIMEN</th>
+                            <th>COSTO</th>
+                            <th>ACCIÓN</th> </tr>
+                    </thead>
+                    <tbody id="tabla-facturas">
+                    <?php 
+                    $numero_factura = 1000; // Número base para la factura
+
+                    if (!empty($lista_historial)): 
+                        foreach ($lista_historial as $h): 
+                            
+                            // Solo procesamos y mostramos los vehículos que YA salieron
+                            if (!empty($h['fecha_hora_salida'])):
+                                $numero_factura++; // Aumenta 1 por cada factura
+                                
+                                $salida = $h['fecha_hora_salida'];
+                                $fecha1 = new DateTime($h['fecha_hora_ingreso']);
+                                $fecha2 = new DateTime($h['fecha_hora_salida']);
+                                $intervalo = $fecha1->diff($fecha2);
+                                $duracion = $intervalo->format('%Hh %Im');
+                                
+                                $total_pago = $h['Total_pago'] ?? 0;
+                                $costo = "$" . number_format($total_pago, 0, ',', '.');
+                    ?>
+                            <tr>
+                                <td style="font-weight: bold; color: #5a67d8;">#<?php echo $numero_factura; ?></td> <td><?php echo htmlspecialchars($h['placa']); ?></td>
+                                <td><?php echo htmlspecialchars($h['nombre_tipo'] ?? 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars($h['fecha_hora_ingreso']); ?></td>
+                                <td><?php echo htmlspecialchars($salida); ?></td>
+                                <td><?php echo $duracion; ?></td>
+                                <td><?php echo htmlspecialchars($h['regimen'] ?? 'Ocasional'); ?></td>
+                                <td style="font-weight: bold; color: #4caf50;"><?php echo $costo; ?></td> <td>
+                                    <button type="button" class="btn-submit" style="padding: 5px 10px; font-size: 12px; background: #5a67d8;" onclick="window.open('ticket.php?placa=<?php echo urlencode($h['placa']); ?>&salida=<?php echo urlencode($salida); ?>', '_blank', 'width=400,height=600')">
+                                        🖨️ Imprimir
+                                    </button>
+                                </td>
+                            </tr>
+                    <?php 
+                            endif;
+                        endforeach; 
+                    else: 
+                    ?>
+                        <tr>
+                            <td colspan="9" style="text-align: center;">No hay facturas generadas todavía.</td>
+                        </tr>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
     <!-- INGRESOS / SALIDAS -->
     <div id="page-ingresos" class="page">
 
@@ -796,13 +882,14 @@ try {
                     <input type="text" name="precio_mensual_1" class="form-control" oninput="formatearMoneda(this)">
                 </div>
 
-                <button type="submit" class="btn-submit">
+                <button type="button" class="btn-submit" onclick="this.form.submit();">
                     Guardar Tarifa
                 </button>
                 </form>
             </div>
             <div class="tarifa-item">
-    
+                <form action="actualizar_tarifas.php" method="POST">
+                <input type="hidden" name="id_tipo" value="2">
                 <h4>🔌 Automóvil Eléctrico</h4>
     
                 <div class="form-group">    
@@ -839,12 +926,14 @@ try {
                     <input type="text" name="precio_mensual_2" class="form-control" oninput="formatearMoneda(this)">
                 </div>
 
-                <button type="submit" class="btn-submit">
+                <button type="button" class="btn-submit" onclick="this.form.submit();">
                     Guardar Tarifa
                 </button>
                 </form>    
             </div>
             <div class="tarifa-item">
+                <form action="actualizar_tarifas.php" method="POST">
+                <input type="hidden" name="id_tipo" value="3">
                 <h4>🏍 Moto</h4>
 
                 <div class="form-group">
@@ -882,14 +971,15 @@ try {
                     <input type="text" name="precio_mensual_3" class="form-control" oninput="formatearMoneda(this)">
                 </div>
 
-                <button type="submit" class="btn-submit">
+                <button type="button" class="btn-submit" onclick="this.form.submit();">
                     Guardar Tarifa
                 </button>
                 </form>
             </div>
         
             <div class="tarifa-item">
-
+                <form action="actualizar_tarifas.php" method="POST">
+                <input type="hidden" name="id_tipo" value="4">
                 <h4>🚲 Bicicleta</h4>
 
                 <div class="form-group">
@@ -926,14 +1016,15 @@ try {
                     <input type="text" name="precio_mensual_4" class="form-control" oninput="formatearMoneda(this)">
                 </div>
 
-                <button type="submit" class="btn-submit">
+                <button type="button" class="btn-submit" onclick="this.form.submit();">
                     Guardar Tarifa
                 </button>
                 </form>
             </div>
 
             <div class="tarifa-item">
-
+                <form action="actualizar_tarifas.php" method="POST">
+                <input type="hidden" name="id_tipo" value="5">
                 <h4>🚚 Camión</h4>
 
                 <div class="form-group">
@@ -970,8 +1061,8 @@ try {
                     <input type="text" name="precio_mensual_5" class="form-control" oninput="formatearMoneda(this)">
                 </div>
 
-                <button type="submit" class="btn-submit">
-                 Guardar Tarifa  
+                <button type="button" class="btn-submit" onclick="this.form.submit();">
+                    Guardar Tarifa
                 </button>
                 </form>
             </div>
