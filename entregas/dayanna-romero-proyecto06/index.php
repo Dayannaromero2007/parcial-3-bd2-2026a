@@ -636,11 +636,6 @@ try {
                     <?php endif; ?>
                     </tbody>
                     </table>
-
-                <button class="btn-submit" >
-                    🚪 Registrar Salida
-                </button>
-
             </div>
 
         </div>
